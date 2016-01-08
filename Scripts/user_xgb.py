@@ -1,4 +1,5 @@
 import os
+import datetime
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -47,7 +48,6 @@ df_all['tfa_sec'] = tfa.apply(lambda x: int(str(x)[12:14]))
 df_all.drop('timestamp_first_active', axis=1, inplace=True)
 
 # OHE
-# NA is a vector of all zeros
 features = ['gender', 'signup_method', 'signup_flow', 'language', 'affiliate_channel', 'affiliate_provider',
 'first_affiliate_tracked', 'signup_app', 'first_device_type', 'first_browser']
 for f in features:
@@ -61,9 +61,6 @@ session.rename(columns = {'user_id': 'id'}, inplace=True)
 session['action'].fillna(-1, inplace=True)
 session['action_type'].fillna(-1, inplace=True)
 session['action_detail'].fillna(-1, inplace=True)
-session['device_type'].fillna(-1, inplace=True)
-##
-session['secs_elapsed'].fillna(0, inplace=True)
 action = pd.pivot_table(session, values='secs_elapsed', index='id', columns='action', aggfunc=len,
 	fill_value=0)
 action.rename(columns=lambda x: 'action_'+str(x), inplace=True)
@@ -74,11 +71,6 @@ action_detail = pd.pivot_table(session, values='secs_elapsed', index='id', colum
 	fill_value=0)
 action_detail.rename(columns=lambda x: 'action_detail_'+str(x), inplace=True)
 
-##
-action_sec = pd.pivot_table(session, values='secs_elapsed', index='id', columns='action', aggfunc=np.sum,
-  fill_value=0)
-action_sec.rename(columns=lambda x: 'action_sec_'+str(x), inplace=True)
-
 # number of different actions for each user
 grouped = session[['id', 'action']].groupby('id')
 myfun = lambda x: len(pd.Series(x).value_counts())
@@ -88,8 +80,6 @@ action_num = grouped.aggregate(myfun)
 df_all = df_all.join(action, on='id')
 df_all = df_all.join(action_detail, on='id')
 df_all = df_all.join(action_num, on='id')
-##
-df_all = df_all.join(action_sec, on='id')
 df_all.fillna(-1, inplace=True)
 
 # drop id
@@ -130,11 +120,9 @@ param['num_class'] = num_class
 param['nthread'] = 20
 param['silent'] = 1
 
-param['max_delta_step'] = 1
 
 evallist  = [(xg_train,'train'), (xg_val,'eval')]
 num_round = 1000
-bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=10)
 
 # predict
 X_test = X_all[n_train:, :]
