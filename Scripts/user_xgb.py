@@ -108,11 +108,11 @@ num_class = max(y)+1
 
 # train test split
 # specify random seed
-#X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=0)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=0)
 
 # fit by xgb
-#xg_train = xgb.DMatrix(X_train, y_train)
-#xg_val = xgb.DMatrix(X_val, y_val)
+xg_train = xgb.DMatrix(X_train, y_train)
+xg_val = xgb.DMatrix(X_val, y_val)
 
 # ndcg5
 def ndcg5(preds, dtrain):
@@ -144,25 +144,25 @@ num_round = 1000
 X_test = X_all[n_train:, :]
 
 # k-fold
-y_pred_sum = np.zeros((X_test.shape[0], num_class))
-kf = KFold(X.shape[0], n_folds=10, shuffle=True, random_state=0)
-i = 0
-for train, val in kf:
-  i += 1
-  print(i)
-  X_train, X_val, y_train, y_val = X[train], X[val], y[train], y[val]
-  xg_train = xgb.DMatrix(X_train, y_train)
-  xg_val = xgb.DMatrix(X_val, y_val)
+#y_pred_sum = np.zeros((X_test.shape[0], num_class))
+#kf = KFold(X.shape[0], n_folds=10, shuffle=True, random_state=0)
+#i = 0
+#for train, val in kf:
+  #i += 1
+  #print(i)
+  #X_train, X_val, y_train, y_val = X[train], X[val], y[train], y[val]
+  #xg_train = xgb.DMatrix(X_train, y_train)
+  #xg_val = xgb.DMatrix(X_val, y_val)
   evallist  = [(xg_train,'train'), (xg_val,'eval')]
   # train
   bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=20)
   # predict
   xg_test = xgb.DMatrix(X_test)
   y_pred = bst.predict(xg_test, ntree_limit=bst.best_iteration)
-  y_pred_sum = y_pred_sum+y_pred
+  #y_pred_sum = y_pred_sum+y_pred
 
 # average
-y_pred = y_pred_sum/10
+#y_pred = y_pred_sum/10
 
 k = 5
 index = np.argsort(y_pred, axis=1)
