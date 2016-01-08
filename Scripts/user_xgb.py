@@ -3,9 +3,11 @@ import datetime
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
-import xgboost as xgb
 from sklearn.cross_validation import train_test_split
+from sklearn.cross_validation import KFold
+import xgboost as xgb
 
+# load data
 my_dir = os.getcwd()+'/Airbnb/Data/'
 df_train = pd.read_csv(my_dir+'train_users_2.csv')
 df_test = pd.read_csv(my_dir+'test_users.csv')
@@ -35,6 +37,11 @@ df_all['dac_year'] = dac[:, 0]
 df_all['dac_month'] = dac[:, 1]
 df_all['dac_day'] = dac[:, 2]
 df_all.drop('date_account_created', axis=1, inplace=True)
+dac_weekday = []
+for i in range(df_all.shape[0]):
+  dac_weekday += [datetime.date(dac[i, 0], dac[i, 1], dac[i, 2]).weekday()]
+
+df_all['dac_weekday'] = dac_weekday
 
 # preprocess timestamp_first_active
 tfa = df_all['timestamp_first_active']
@@ -46,11 +53,17 @@ df_all['tfa_hr'] = tfa.apply(lambda x: int(str(x)[8:10]))
 df_all['tfa_min'] = tfa.apply(lambda x: int(str(x)[10:12]))
 df_all['tfa_sec'] = tfa.apply(lambda x: int(str(x)[12:14]))
 df_all.drop('timestamp_first_active', axis=1, inplace=True)
+tfa_weekday = []
+for i in range(df_all.shape[0]):
+  tfa_weekday += [datetime.date(df_all['tfa_year'][i], df_all['tfa_month'][i], df_all['tfa_day'][i]).weekday()]
+
+df_all['tfa_weekday'] = tfa_weekday
 
 # OHE
 features = ['gender', 'signup_method', 'signup_flow', 'language', 'affiliate_channel', 'affiliate_provider',
 'first_affiliate_tracked', 'signup_app', 'first_device_type', 'first_browser']
 for f in features:
+  # NaN becomes a vector of all zeros
   df_all_dum = pd.get_dummies(df_all[f], prefix=f)
   df_all.drop(f, axis=1, inplace=True)
   df_all = pd.concat([df_all, df_all_dum], axis=1)
@@ -61,10 +74,11 @@ session.rename(columns = {'user_id': 'id'}, inplace=True)
 session['action'].fillna(-1, inplace=True)
 session['action_type'].fillna(-1, inplace=True)
 session['action_detail'].fillna(-1, inplace=True)
+
 action = pd.pivot_table(session, values='secs_elapsed', index='id', columns='action', aggfunc=len,
 	fill_value=0)
 action.rename(columns=lambda x: 'action_'+str(x), inplace=True)
-# action_type does not help
+# action_type does not work
 # there are only a few different action_type
 # difficult to distinguish
 action_detail = pd.pivot_table(session, values='secs_elapsed', index='id', columns='action_detail', aggfunc=len,
@@ -80,6 +94,7 @@ action_num = grouped.aggregate(myfun)
 df_all = df_all.join(action, on='id')
 df_all = df_all.join(action_detail, on='id')
 df_all = df_all.join(action_num, on='id')
+
 df_all.fillna(-1, inplace=True)
 
 # drop id
@@ -92,12 +107,12 @@ y = le.fit_transform(labels)
 num_class = max(y)+1
 
 # train test split
-# set random seed
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=0)
+# specify random seed
+#X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, random_state=0)
 
 # fit by xgb
-xg_train = xgb.DMatrix(X_train, y_train)
-xg_val = xgb.DMatrix(X_val, y_val)
+#xg_train = xgb.DMatrix(X_train, y_train)
+#xg_val = xgb.DMatrix(X_val, y_val)
 
 # ndcg5
 def ndcg5(preds, dtrain):
@@ -120,14 +135,35 @@ param['num_class'] = num_class
 param['nthread'] = 20
 param['silent'] = 1
 
+param['eta'] = 0.1
 
-evallist  = [(xg_train,'train'), (xg_val,'eval')]
+#evallist  = [(xg_train,'train'), (xg_val,'eval')]
 num_round = 1000
+#bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=20)
 
-# predict
 X_test = X_all[n_train:, :]
-xg_test = xgb.DMatrix(X_test)
-y_pred = bst.predict(xg_test, ntree_limit=bst.best_iteration)
+
+# k-fold
+y_pred_sum = np.zeros((X_test.shape[0], num_class))
+kf = KFold(X.shape[0], n_folds=10, shuffle=True, random_state=0)
+i = 0
+for train, val in kf:
+  i += 1
+  print(i)
+  X_train, X_val, y_train, y_val = X[train], X[val], y[train], y[val]
+  xg_train = xgb.DMatrix(X_train, y_train)
+  xg_val = xgb.DMatrix(X_val, y_val)
+  evallist  = [(xg_train,'train'), (xg_val,'eval')]
+  # train
+  bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=20)
+  # predict
+  xg_test = xgb.DMatrix(X_test)
+  y_pred = bst.predict(xg_test, ntree_limit=bst.best_iteration)
+  y_pred_sum = y_pred_sum+y_pred
+
+# average
+y_pred = y_pred_sum/10
+
 k = 5
 index = np.argsort(y_pred, axis=1)
 top = le.inverse_transform(index[:, -k:][:,::-1])
