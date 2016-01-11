@@ -8,4 +8,4 @@ rf.fit(X_train, y_train)
 preds = rf.predict_proba(X_val)
 ndcg5(preds, xg_val)
 
-y_pred = rf.predict_proba(X_test)
+y_pred_rf = rf.predict_proba(X_test)
