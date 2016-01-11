@@ -11,7 +11,7 @@ SS = preprocessing.StandardScaler()
 X_all_std = SS.fit_transform(X_all)
 X_std = X_all_std[:n_train, :]
 
-X_train, X_val, y_train, y_val = train_test_split(X_std, y, test_size=0.1, random_state=1)
+X_train, X_val, y_train, y_val = train_test_split(X_std, y, test_size=0.1, random_state=0)
 label_train = np_utils.to_categorical(y_train)
 label_val = np_utils.to_categorical(y_val)
 
@@ -42,4 +42,4 @@ preds = model.predict_proba(X_val, verbose=0)
 ndcg5(preds, xg_val)
 
 X_test_std = X_all_std[n_train:, :]
-y_pred = model.predict_proba(X_test_std, verbose=0)
+y_pred_nn = model.predict_proba(X_test_std, verbose=0)
