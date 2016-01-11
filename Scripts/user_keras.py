@@ -35,7 +35,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adagrad')
 # fit
 # a typical minibatch size is 256
 # shuffle the samples at each epoch
-model.fit(X_train, label_train, batch_size=256, nb_epoch=50, validation_data=(X_val, label_val),
+model.fit(X_train, label_train, batch_size=256, nb_epoch=100, validation_data=(X_val, label_val),
 	shuffle=True, show_accuracy=True, verbose=2)
 
 preds = model.predict_proba(X_val, verbose=0)
