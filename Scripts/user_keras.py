@@ -20,11 +20,11 @@ model = Sequential()
 
 model.add(Dense(64, input_dim=X.shape[1]))
 model.add(Activation('relu'))
-model.add(Dropout(0.05))
+#model.add(Dropout(0.05))
 
 model.add(Dense(64))
 model.add(Activation('relu'))
-model.add(Dropout(0.05))
+#model.add(Dropout(0.05))
 
 model.add(Dense(num_class))
 model.add(Activation('softmax'))
@@ -35,7 +35,7 @@ model.compile(loss='categorical_crossentropy', optimizer='adagrad')
 # fit
 # a typical minibatch size is 256
 # shuffle the samples at each epoch
-model.fit(X_train, label_train, batch_size=256, nb_epoch=100, validation_data=(X_val, label_val),
+model.fit(X_train, label_train, batch_size=128, nb_epoch=20, validation_data=(X_val, label_val),
 	shuffle=True, show_accuracy=True, verbose=2)
 
 preds = model.predict_proba(X_val, verbose=0)
