@@ -95,6 +95,7 @@ df_all = df_all.join(action, on='id')
 df_all = df_all.join(action_detail, on='id')
 df_all = df_all.join(action_num, on='id')
 
+# there are some people who do not have session information
 df_all.fillna(-1, inplace=True)
 
 # drop id
@@ -155,7 +156,7 @@ X_test = X_all[n_train:, :]
   #xg_val = xgb.DMatrix(X_val, y_val)
   evallist  = [(xg_train,'train'), (xg_val,'eval')]
   # train
-  bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=20)
+  bst = xgb.train(param, xg_train, num_round, evallist, feval=ndcg5, early_stopping_rounds=30)
   # predict
   xg_test = xgb.DMatrix(X_test)
   y_pred = bst.predict(xg_test, ntree_limit=bst.best_iteration)
